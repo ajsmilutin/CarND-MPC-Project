@@ -4,9 +4,15 @@
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
 
+extern const double Lf;
+extern const double dt;
+
 using namespace std;
 
 class MPC {
+ private:
+  vector<double> previousSteer;
+  vector<double> previousThrotle;
  public:
   MPC();
 

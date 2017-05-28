@@ -2,12 +2,12 @@
 #include <cppad/cppad.hpp>
 #include <cppad/ipopt/solve.hpp>
 #include "Eigen-3.3/Eigen/Core"
-
+#include "helpers.h"
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-size_t N = 0;
-double dt = 0;
+size_t N = 8;
+extern const double dt = 0.5;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -19,13 +19,20 @@ double dt = 0;
 // presented in the classroom matched the previous radius.
 //
 // This is the length from front to CoG that has a similar radius.
-const double Lf = 2.67;
+extern const double Lf = 2.67;
 
 class FG_eval {
+ private:
+    double alpha;
+    double beta;
+    double lambda;
+    double nu;
+    double vref;
  public:
   // Fitted polynomial coefficients
   Eigen::VectorXd coeffs;
-  FG_eval(Eigen::VectorXd coeffs) { this->coeffs = coeffs; }
+  FG_eval(Eigen::VectorXd coeffs, double v, double a, double b, double l, double n):
+      vref(v), alpha(a), beta(b), lambda(l), nu(n) { this->coeffs = coeffs;  }
 
   typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
   void operator()(ADvector& fg, const ADvector& vars) {
@@ -33,13 +40,40 @@ class FG_eval {
     // fg a vector of constraints, x is a vector of constraints.
     // NOTE: You'll probably go back and forth between this function and
     // the Solver function below.
+
+    // Fg
+
+    Eigen::VectorXd state;
+    AD<double> px  = vars[0];
+    AD<double> py  = vars[1];
+    AD<double> phi = vars[2];
+    AD<double> ve  = vars[3];
+    fg[0] =0;
+
+    for (int i=0; i<N-1; i++){
+      AD<double> steer = vars[4+i];
+      AD<double> throt = vars[4+(N-1)+i];
+      applyControl<AD<double>>(px, py, phi, ve, steer, throt, dt, Lf);
+      fg[0] += alpha*CppAD::pow(polyeval<AD<double>>(coeffs, px) - py, 2)
+            +  beta*CppAD::pow(ve - vref,2)
+            +  lambda*CppAD::pow(steer,2)
+            +  nu*CppAD::pow(throt, 2);
+      fg[i+1] = phi; // total angle
+    }
   }
 };
 
 //
 // MPC class definition implementation.
 //
-MPC::MPC() {}
+MPC::MPC() {
+  previousSteer.resize(N-1);
+  previousThrotle.resize(N-1);
+  for (int i=0; i<N-1; i++){
+    previousSteer[i]=0;
+    previousThrotle[i]=0;
+  }
+}
 MPC::~MPC() {}
 
 vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
@@ -48,36 +82,66 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   typedef CPPAD_TESTVECTOR(double) Dvector;
 
   // TODO: Set the number of model variables (includes both states and inputs).
-  // For example: If the state is a 4 element vector, the actuators is a 2
-  // element vector and there are 10 timesteps. The number of variables is:
-  //
-  // 4 * 10 + 2 * 9
-  size_t n_vars = 0;
+
+  // I will just use the initial state, and inputs
+
+  size_t n_vars = 4 + (N-1)*2;
   // TODO: Set the number of constraints
-  size_t n_constraints = 0;
+  size_t n_constraints = N-1;
 
   // Initial value of the independent variables.
-  // SHOULD BE 0 besides initial state.
+
   Dvector vars(n_vars);
-  for (int i = 0; i < n_vars; i++) {
-    vars[i] = 0;
+
+
+
+  for (int i =0; i<4; i++){
+    vars[i]=state(i);
   }
+
+  // initialize to previous solutions, that produces more stable solution
+  // Hot-start optimization
+  for (int i=0; i<(N-1)-1 ; i++){
+    vars[4+i] = previousSteer[i+1];
+  }
+  vars[4+(N-1)-1] =0;
+
+  for (int i=0; i<(N-1)-1 ; i++){
+    vars[4+i+N-1] = previousThrotle[i+1];
+  }
+  vars[4+2*(N-1)-1] =0;
 
   Dvector vars_lowerbound(n_vars);
   Dvector vars_upperbound(n_vars);
-  // TODO: Set lower and upper limits for variables.
+  // fix the initial state
+  for (int i =0; i<4; i++){
+    vars_lowerbound[i]=state(i);
+    vars_upperbound[i]=state(i);
+  }
+
+  // steering angle bound -25 degrees to 25 degrees, must be converted to radians
+  for (int i =4; i<N-1+4; i++){
+    vars_lowerbound[i]=-deg2rad(17.5);
+    vars_upperbound[i]=deg2rad(17.5);
+  }
+
+  for (int i =N-1+4; i<2*(N-1)+4; i++){
+    vars_lowerbound[i]=0;
+    vars_upperbound[i]=2;
+  }
+
 
   // Lower and upper limits for the constraints
   // Should be 0 besides initial state.
   Dvector constraints_lowerbound(n_constraints);
   Dvector constraints_upperbound(n_constraints);
   for (int i = 0; i < n_constraints; i++) {
-    constraints_lowerbound[i] = 0;
-    constraints_upperbound[i] = 0;
+    constraints_lowerbound[i] = -5*pi()/8;
+    constraints_upperbound[i] = 5*pi()/8;
   }
 
   // object that computes objective and constraints
-  FG_eval fg_eval(coeffs);
+  FG_eval fg_eval(coeffs, 27, 4, 2, 90, 2);
 
   //
   // NOTE: You don't have to worry about these options
@@ -112,10 +176,27 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   auto cost = solution.obj_value;
   std::cout << "Cost " << cost << std::endl;
 
+
   // TODO: Return the first actuator values. The variables can be accessed with
   // `solution.x[i]`.
   //
   // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
   // creates a 2 element double vector.
-  return {};
+  // there are cases when the solution imediately jumps to some suboptimal
+  // value. That solution is identified by higgh cost. So in that case, the
+  // solution calculated in previous timestamp is used
+  vector<double> controll;
+  double alpha = 0.25;
+  for (int i=0; i<N-1-1; i++){
+    previousSteer[i]= alpha * previousSteer[i+1] + (1-alpha)*solution.x[4+i];
+    previousThrotle[i]=alpha * previousThrotle[i+1] + (1-alpha)*solution.x[4+i + N-1];
+    controll.push_back(previousSteer[i]);
+    controll.push_back(previousThrotle[i]);
+  }
+  previousSteer[N-1-1]=solution.x[4 + N-1-1];
+  previousThrotle[N-1-1]=solution.x[4 + 2*(N-1)-1];
+  controll.push_back(previousSteer[N-1-1]);
+  controll.push_back(previousThrotle[N-1-1]);
+
+  return controll;
 }

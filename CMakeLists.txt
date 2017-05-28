@@ -8,8 +8,9 @@ add_definitions(-std=c++11 -O3)
 
 set(CXX_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS, "${CXX_FLAGS}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build")
 
-set(sources src/MPC.cpp src/main.cpp)
+set(sources src/MPC.cpp src/main.cpp src/CoordinateTransform.cpp src/CoordinateTransform.h src/helpers.h src/helpers.cpp)
 
 include_directories(src/Eigen-3.3)
 
@@ -25,5 +26,5 @@ endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 add_executable(mpc ${sources})
 
-target_link_libraries(mpc ipopt z ssl uv uWS)
+target_link_libraries(mpc coinblas coinlapack ipopt z ssl uv uWS)
 
