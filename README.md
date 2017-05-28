@@ -85,10 +85,12 @@ The trajectory that the car should follow is given by the set of waypoints expre
 <p align="center">
 <img src="https://latex.codecogs.com/svg.latex?\begin{bmatrix}x_{local}\\y_{local}\end{bmatrix}=\begin{bmatrix}\cos\psi&\sin\psi\\-\sin\psi&\cos\psi\end{bmatrix}\begin{bmatrix}x_{world}-x\\y_{world}-y\end{bmatrix}">
 </p>
+
 where *x*, *y* and *psi* is position and orientation of the car in world coordinate frame. Once the coordinates for all the waypoints have been trasformed to local coordinate frame, the 4th order polynomial is fit to it. The estimates the *y* position of the referent trajectory based on *x* position. So the referent trajectory is given by:
 <p align="center">
 <img src="https://latex.codecogs.com/svg.latex?y_r(x)=a_3x^3+a_2x^2+a_1x+a_0">
 </p>
+
 where *a0*-*a3* are parameters of the polynomial which are calculated using fitting procedure
 
 | Car, desired trajectory (yellow line) and MPC optput (green line) |
@@ -102,12 +104,14 @@ The car has to follow the desired trajectory and maintaing constant predefined s
 <p align="center">
 <img src="https://latex.codecogs.com/svg.latex?J_k=\alpha\sum_{i=k}^{k+N}(y_r(x_i)-y_i)^2+\beta\sum_{i=k}^{k+N}(v_r-v_i)^2+\lambda\sum_{i=k}^{k+N}\delta_i^2+\nu\sum_{i=k}^{k+N}a_i^2">
 </p>
+
 The parameters *alpha*, *beta*, *lambda* and *nu* are used to give relative weiths to errors. Reason for that is the different scales for all the variables, for example the steering angle *delta* is in range *[-1, 1]* while the referent *vr* speed might be close to *60mph*.
 
 So to obtain the controll input we have to solve following optimization problem
 <p align="center">
 <img src="https://latex.codecogs.com/svg.latex?\\minimize\;\;J_k\\st.\;\;\;\;\;-1\leq\delta_i\leq{1}\\.\;\;\;\;\;\;\;\;-1\leq{a_i}\leq{1}">
 </p>
+
 As a result the future N steering angles and accelerations are calculated. The first steering angle and acceleration are passed as a control value to the simulator. 
 
 Let's recall that this cost function is nonconvex and nonlinear, meaning that the optimization procedure might fail to find **global minimum** but gets stuck in some **local minimum**. That actually happened to me several times when trying to control a car using this approach. Here is a screenshot from the simulator showing exactly that:
