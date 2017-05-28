@@ -83,7 +83,7 @@ In this section, the brief discussion of the implementation is going to be given
 
 The trajectory that the car should follow is given by the set of waypoints expressed in world coordinate frame. On the image below the waypoints are represented by yellow dots. The MPC optimization would be performed in local coordinate frame of the car, because that makes things a bit cleaner, since cars coordinate and angle in local coordinate frame are zero. To transform position of waypoint (*xw*, *yw*) to the local coordinate frame, following formula has to be applied:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\begin{bmatrix}x_{local}\\y_{local}\end{bmatrix}=\begin{bmatrix}\cos{\psi}&\sin{\psi}\\-\sin{\psi}&\cos\psi\end{bmatrix}\begin{bmatrix}x_{world}-x\\y_{world}-y\end{bmatrix}">
+<img src="https://latex.codecogs.com/svg.latex?b=a">
 </p>
 where *x*, *y* and *psi* is position and orientation of the car in world coordinate frame. Once the coordinates for all the waypoints have been trasformed to local coordinate frame, the 4th order polynomial is fit to it. The estimates the *y* position of the referent trajectory based on *x* position. So the referent trajectory is given by:
 <p align="center">
@@ -100,7 +100,7 @@ where *a0*-*a3* are parameters of the polynomial which are calculated using fitt
 
 The car has to follow the desired trajectory and maintaing constant predefined speed. The tracking error is shown on the image above. The speed error is calculated as a diference between predefined *vr* and curent *v* speed. Also in order to obtain the smooth operation, the controll inputs should be as low as possible. Setting high steering angle might yield jerky behavior. As a result the used cost function is:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?J_k=\alpha\sum_{i=k}^{k+N}(y_r(x_i)-y_i)^2 +\beta\sum_{i=k}^{k+N}(v_r-v_i)^2+\lambda\sum_{i=k}^{k+N}\delta_i^2+\nu\sum_{i=k}^{k+N}a_i^2">
+<img src="https://latex.codecogs.com/svg.latex?J_k=\alpha\sum_{i=k}^{k+N}(y_r(x_i)-y_i)^2+\beta\sum_{i=k}^{k+N}(v_r-v_i)^2+\lambda\sum_{i=k}^{k+N}\delta_i^2+\nu\sum_{i=k}^{k+N}a_i^2">
 </p>
 The parameters *alpha*, *beta*, *lambda* and *nu* are used to give relative weiths to errors. Reason for that is the different scales for all the variables, for example the steering angle *delta* is in range *[-1, 1]* while the referent *vr* speed might be close to *60mph*.
 
