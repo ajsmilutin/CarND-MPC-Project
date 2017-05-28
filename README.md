@@ -15,31 +15,31 @@ MPC stands for model predictive control. It is an advanced model-based control m
 
 Let's say we need to controll the discreete system  with the state **x** and controll input **u** with the dynamics of the system given by:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\mathbf{\dot{x}}=\mathbf{f}\left(\mathbf{x}, \mathbf{u}\right)">
+<img src="https://latex.codecogs.com/svg.latex?\mathbf{\dot{x}}=\mathbf{f}\left(\mathbf{x},\mathbf{u}\right)">
 </p>
 and with output calculated using:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\mathbf{y}=\mathbf{g}\left(\mathbf{x}, \mathbf{u}\right)">
+<img src="https://latex.codecogs.com/svg.latex?\mathbf{y}=\mathbf{g}\left(\mathbf{x},\mathbf{u}\right)">
 </p>
 
 so that system output **y** needs to follow reference trajectory **r**. The cost function that needs to be minimized is:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?J=\int_t^{t+T}||\mathbf{y(\tau)}-\mathbf{r(\tau})||^2d\tau + \lambda\int_t^{t+T}||\mathbf{u}||^2d\tau">
+<img src="https://latex.codecogs.com/svg.latex?J=\int_t^{t+T}||\mathbf{y(\tau)}-\mathbf{r(\tau})||^2d\tau+\lambda\int_t^{t+T}||\mathbf{u}||^2d\tau">
 </p>
 where ***T*** is the time horizon. Parameter ***lambda*** is used to set the tradeof between the tracking error and high controll values.
 
 This system is continuous in time, but the real controllers run at discrete timestamps. So we can discretize the system:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\mathbf{x_{i+1}}\approx\mathbf{x_i}+\mathbf{f}\left(\mathbf{x_i}, \mathbf{u_i}\right)\Delta T">
+<img src="https://latex.codecogs.com/svg.latex?\mathbf{x_{i+1}}\approx\mathbf{x_i}+\mathbf{f}\left(\mathbf{x_i},\mathbf{u_i}\right)\Delta{T}">
 </p>
 and 
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\mathbf{y}_{i}=\mathbf{g}\left(\mathbf{x}_i, \mathbf{u}_i\right)">
+<img src="https://latex.codecogs.com/svg.latex?\mathbf{y}_{i}=\mathbf{g}\left(\mathbf{x}_i,\mathbf{u}_i\right)">
 </p>
 
 So now the cost function that we need to minimize at the timestamp *k* becomes:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?J_k=\sum_{i=k}^{k+N}||\mathbf{y_i}-\mathbf{r_i}||^2 + \lambda\sum_{i=k}^{k+N}||\mathbf{u_i}||^2">
+<img src="https://latex.codecogs.com/svg.latex?J_k=\sum_{i=k}^{k+N}||\mathbf{y_i}-\mathbf{r_i}||^2+\lambda\sum_{i=k}^{k+N}||\mathbf{u_i}||^2">
 </p>
 This kind of problem is well known and can be solved using standard optimization techniques. The solution of this equation is controll signal at all timestamps within the horizon. 
 
@@ -83,12 +83,11 @@ In this section, the brief discussion of the implementation is going to be given
 
 The trajectory that the car should follow is given by the set of waypoints expressed in world coordinate frame. On the image below the waypoints are represented by yellow dots. The MPC optimization would be performed in local coordinate frame of the car, because that makes things a bit cleaner, since cars coordinate and angle in local coordinate frame are zero. To transform position of waypoint (*xw*, *yw*) to the local coordinate frame, following formula has to be applied:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\begin{bmatrix}x_{local}\\y_{local}\end{bmatrix}=\begin{bmatrix}\cos{\psi}& \sin{\psi}\\-\sin{\psi} & \cos\psi\end{bmatrix}\begin{bmatrix}x_{world} - x\\ y_{world}-y\end{bmatrix}">
+<img src="https://latex.codecogs.com/svg.latex?\begin{bmatrix}x_{local}\\y_{local}\end{bmatrix}=\begin{bmatrix}\cos{\psi}&\sin{\psi}\\-\sin{\psi}&\cos\psi\end{bmatrix}\begin{bmatrix}x_{world}-x\\y_{world}-y\end{bmatrix}">
 </p>
-where *x*, *y* and *psi* is position and orientation of the car in world coordinate frame.
-Once the coordinates for all the waypoints have been trasformed to local coordinate frame, the 4th order polynomial is fit to it. The estimates the *y* position of the referent trajectory based on *x* position. So the referent trajectory is given by:
+where *x*, *y* and *psi* is position and orientation of the car in world coordinate frame. Once the coordinates for all the waypoints have been trasformed to local coordinate frame, the 4th order polynomial is fit to it. The estimates the *y* position of the referent trajectory based on *x* position. So the referent trajectory is given by:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?y_r(x)=a_3x^3 + a_2x^2 + a_1x + a_0">
+<img src="https://latex.codecogs.com/svg.latex?y_r(x)=a_3x^3+a_2x^2+a_1x+a_0">
 </p>
 where *a0*-*a3* are parameters of the polynomial which are calculated using fitting procedure
 
@@ -107,7 +106,7 @@ The parameters *alpha*, *beta*, *lambda* and *nu* are used to give relative weit
 
 So to obtain the controll input we have to solve following optimization problem
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\\minimize \;\; J_k\\ st.\;\;\;\;\; -1\leq \delta_i\leq 1\\.  \;\;\;\;\;\;\;\;-1\leq a_i \leq 1">
+<img src="https://latex.codecogs.com/svg.latex?\\minimize\;\;J_k\\st.\;\;\;\;\;-1\leq\delta_i\leq{1}\\.\;\;\;\;\;\;\;\;-1\leq{a_i}\leq{1}">
 </p>
 As a result the future N steering angles and accelerations are calculated. The first steering angle and acceleration are passed as a control value to the simulator. 
 
@@ -120,7 +119,7 @@ Let's recall that this cost function is nonconvex and nonlinear, meaning that th
 
 To avoid such a problem the search space needs to be minimized. Since the car should go forward always and should not make U-turn, such a constraint would be added to our MPC optimization problem. It is implemented by limiting the orientation *psi* to be less than 115 degrees during the whole MPC horizon, defined by a number of samples N. As a result, the final optimization problem would look like:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\\minimize \;\; J_k\\ st.\;\;\;\;\; -1\leq \delta_i\leq 1\\.  \;\;\;\;\;\;\;\;-1\leq a_i \leq 1\\.  \;\;\;\;\;\;\;\;-\frac{5\pi}{8}\leq \psi_i\leq\frac{5\pi}{8}">
+<img src="https://latex.codecogs.com/svg.latex?\\minimize\;\;J_k\\st.\;\;\;\;\;-1\leq\delta_i\leq{1}\\.\;\;\;\;\;\;\;\;-1\leq{a_i}\leq{1}\\.\;\;\;\;\;\;\;\;-\frac{5\pi}{8}\leq\psi_i\leq\frac{5\pi}{8}">
 </p>
 
 ### Receding horizon
