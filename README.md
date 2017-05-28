@@ -82,7 +82,9 @@ where Lr is a distance from the back axle to the center of mass of the car. It i
 In this section, the brief discussion of the implementation is going to be given. 
 
 The trajectory that the car should follow is given by the set of waypoints expressed in world coordinate frame. On the image below the waypoints are represented by yellow dots. The MPC optimization would be performed in local coordinate frame of the car, because that makes things a bit cleaner, since cars coordinate and angle in local coordinate frame are zero. To transform position of waypoint (*xw*, *yw*) to the local coordinate frame, following formula has to be applied:
-
+<p align="center">
+<img src="https://latex.codecogs.com/svg.latex?\begin{bmatrix}x_{local}\\y_{local}\end{bmatrix}=\begin{bmatrix}\cos\psi&\sin\psi\\-\sin\psi&\cos\psi\end{bmatrix}\begin{bmatrix}x_{world}-x\\y_{world}-y\end{bmatrix}">
+</p>
 where *x*, *y* and *psi* is position and orientation of the car in world coordinate frame. Once the coordinates for all the waypoints have been trasformed to local coordinate frame, the 4th order polynomial is fit to it. The estimates the *y* position of the referent trajectory based on *x* position. So the referent trajectory is given by:
 <p align="center">
 <img src="https://latex.codecogs.com/svg.latex?y_r(x)=a_3x^3+a_2x^2+a_1x+a_0">
