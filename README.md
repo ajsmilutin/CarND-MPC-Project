@@ -13,38 +13,38 @@ This project is a part the second semester of Udacity's Self-Driving Car Nanodeg
 ## MPC
 MPC stands for model predictive control. It is an advanced model-based control method. In order to be able to apply this method, the plant model is needed. MPC works by optimizing the control signal at current and several future timeslots, in order to minimize a cost function over some time finite horizon. The optimization is performed at each timestamp, the solution of the optimization problem is used as a control signal. The cost function is usually a sum of tracking error over some finite horizon and magnitude of control signals. The results is that there is a tradeoff between tracking error and smoothness of the dynamical behavior. MPC is robust against time delays and can be used for complex systems since it takes into account a future of the system and influence on current control on subsequent motion of the system. Also, it can take into account the control signal saturation which is quite important for planning future behavior. The only downside of the MPC is that it can be computationally expensive and might take a substantial amount of time to solve. Also, the model of the system might be unknown and difficult to obtain. 
 
-Let's say we need to controll the discreete system  with the state **x** and controll input **u** with the dynamics of the system given by:
+Let's say we need to control the continuous system  with the state **x** and control input **u** with the dynamics of the system given by:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\mathbf{\dot{x}}=\mathbf{f}\left(\mathbf{x},\mathbf{u}\right)">
+<img src="https://latex.codecogs.com/svg.latex?\mathbf{\dot{x}}=\mathbf{f}\left(\mathbf{x}, \mathbf{u}\right)">
 </p>
 and with output calculated using:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\mathbf{y}=\mathbf{g}\left(\mathbf{x},\mathbf{u}\right)">
+<img src="https://latex.codecogs.com/svg.latex?\mathbf{y}=\mathbf{g}\left(\mathbf{x}, \mathbf{u}\right)">
 </p>
 
 so that system output **y** needs to follow reference trajectory **r**. The cost function that needs to be minimized is:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?J=\int_t^{t+T}||\mathbf{y(\tau)}-\mathbf{r(\tau})||^2d\tau+\lambda\int_t^{t+T}||\mathbf{u}||^2d\tau">
+<img src="https://latex.codecogs.com/svg.latex?J=\int_t^{t+T}||\mathbf{y(\tau)}-\mathbf{r(\tau})||^2d\tau + \lambda\int_t^{t+T}||\mathbf{u}||^2d\tau">
 </p>
-where ***T*** is the time horizon. Parameter ***lambda*** is used to set the tradeof between the tracking error and high controll values.
+where ***T*** is the time horizon. Parameter ***lambda*** is used to set the tradeof between the tracking error and high control values.
 
-This system is continuous in time, but the real controllers run at discrete timestamps. So we can discretize the system:
+This system is continuous in time, but the real controlers run at discrete timestamps. So we can discretize the system:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\mathbf{x_{i+1}}\approx\mathbf{x_i}+\mathbf{f}\left(\mathbf{x_i},\mathbf{u_i}\right)\Delta{T}">
+<img src="https://latex.codecogs.com/svg.latex?\mathbf{x_{i+1}}\approx\mathbf{x_i}+\mathbf{f}\left(\mathbf{x_i}, \mathbf{u_i}\right)\Delta T">
 </p>
 and 
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\mathbf{y}_{i}=\mathbf{g}\left(\mathbf{x}_i,\mathbf{u}_i\right)">
+<img src="https://latex.codecogs.com/svg.latex?\mathbf{y}_{i}=\mathbf{g}\left(\mathbf{x}_i, \mathbf{u}_i\right)">
 </p>
 
 So now the cost function that we need to minimize at the timestamp *k* becomes:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?J_k=\sum_{i=k}^{k+N}||\mathbf{y_i}-\mathbf{r_i}||^2+\lambda\sum_{i=k}^{k+N}||\mathbf{u_i}||^2">
+<img src="https://latex.codecogs.com/svg.latex?J_k=\sum_{i=k}^{k+N}||\mathbf{y_i}-\mathbf{r_i}||^2 + \lambda\sum_{i=k}^{k+N}||\mathbf{u_i}||^2">
 </p>
-This kind of problem is well known and can be solved using standard optimization techniques. The solution of this equation is controll signal at all timestamps within the horizon. 
+This kind of problem is well known and can be solved using standard optimization techniques. The solution of this equation is control signal at all timestamps within the horizon. 
 
 ### Linear systems
-For the linear systems, the functions **f** and **g** are linear in state variable **x** and controll variable **u**. The state space model of such system is:
+For the linear systems, the functions **f** and **g** are linear in state variable **x** and control variable **u**. The state space model of such system is:
 <p align="center">
 <img src="https://latex.codecogs.com/svg.latex?\mathbf{\dot{x}}=\mathbf{A}\mathbf{x}+\mathbf{B}\mathbf{u}">
 </p>
@@ -83,14 +83,13 @@ In this section, the brief discussion of the implementation is going to be given
 
 The trajectory that the car should follow is given by the set of waypoints expressed in world coordinate frame. On the image below the waypoints are represented by yellow dots. The MPC optimization would be performed in local coordinate frame of the car, because that makes things a bit cleaner, since cars coordinate and angle in local coordinate frame are zero. To transform position of waypoint (*xw*, *yw*) to the local coordinate frame, following formula has to be applied:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\begin{bmatrix}x_{local}\\y_{local}\end{bmatrix}=\begin{bmatrix}\cos\psi&\sin\psi\\-\sin\psi&\cos\psi\end{bmatrix}\begin{bmatrix}x_{world}-x\\y_{world}-y\end{bmatrix}">
+<img src="https://latex.codecogs.com/svg.latex?\begin{bmatrix}x_{local}\\y_{local}\end{bmatrix}=\begin{bmatrix}\cos{\psi}& \sin{\psi}\\-\sin{\psi} & \cos\psi\end{bmatrix}\begin{bmatrix}x_{world} - x\\ y_{world}-y\end{bmatrix}">
 </p>
-
-where *x*, *y* and *psi* is position and orientation of the car in world coordinate frame. Once the coordinates for all the waypoints have been trasformed to local coordinate frame, the 4th order polynomial is fit to it. The estimates the *y* position of the referent trajectory based on *x* position. So the referent trajectory is given by:
+where *x*, *y* and *psi* is position and orientation of the car in world coordinate frame.
+Once the coordinates for all the waypoints have been transformed to local coordinate frame, the 4th order polynomial is fit to it. The estimates the *y* position of the referent trajectory based on *x* position. So the referent trajectory is given by:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?y_r(x)=a_3x^3+a_2x^2+a_1x+a_0">
+<img src="https://latex.codecogs.com/svg.latex?y_r(x)=a_3x^3 + a_2x^2 + a_1x + a_0">
 </p>
-
 where *a0*-*a3* are parameters of the polynomial which are calculated using fitting procedure
 
 | Car, desired trajectory (yellow line) and MPC optput (green line) |
@@ -100,18 +99,16 @@ where *a0*-*a3* are parameters of the polynomial which are calculated using fitt
 
 ### The cost function
 
-The car has to follow the desired trajectory and maintaing constant predefined speed. The tracking error is shown on the image above. The speed error is calculated as a diference between predefined *vr* and curent *v* speed. Also in order to obtain the smooth operation, the controll inputs should be as low as possible. Setting high steering angle might yield jerky behavior. As a result the used cost function is:
+The car has to follow the desired trajectory and maintaining constant predefined speed. The tracking error is shown on the image above. The speed error is calculated as a diference between predefined *vr* and curent *v* speed. Also in order to obtain the smooth operation, the control inputs should be as low as possible. Setting high steering angle might yield jerky behavior. As a result the used cost function is:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?J_k=\alpha\sum_{i=k}^{k+N}(y_r(x_i)-y_i)^2+\beta\sum_{i=k}^{k+N}(v_r-v_i)^2+\lambda\sum_{i=k}^{k+N}\delta_i^2+\nu\sum_{i=k}^{k+N}a_i^2">
+<img src="https://latex.codecogs.com/svg.latex?J_k=\alpha\sum_{i=k}^{k+N}(y_r(x_i)-y_i)^2 +\beta\sum_{i=k}^{k+N}(v_r-v_i)^2+\lambda\sum_{i=k}^{k+N}\delta_i^2+\nu\sum_{i=k}^{k+N}a_i^2">
 </p>
+The parameters *alpha*, *beta*, *lambda* and *nu* are used to give relative weigths to errors. Reason for that is the different scales for all the variables, for example the steering angle *delta* is in range *[-1, 1]* while the referent *vr* speed might be close to *60mph*.
 
-The parameters *alpha*, *beta*, *lambda* and *nu* are used to give relative weiths to errors. Reason for that is the different scales for all the variables, for example the steering angle *delta* is in range *[-1, 1]* while the referent *vr* speed might be close to *60mph*.
-
-So to obtain the controll input we have to solve following optimization problem
+So to obtain the control input we have to solve following optimization problem
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\\minimize\;\;J_k\\st.\;\;\;\;\;-1\leq\delta_i\leq{1}\\.\;\;\;\;\;\;\;\;-1\leq{a_i}\leq{1}">
+<img src="https://latex.codecogs.com/svg.latex?\\minimize \;\; J_k\\ st.\;\;\;\;\; -1\leq \delta_i\leq 1\\.  \;\;\;\;\;\;\;\;-1\leq a_i \leq 1">
 </p>
-
 As a result the future N steering angles and accelerations are calculated. The first steering angle and acceleration are passed as a control value to the simulator. 
 
 Let's recall that this cost function is nonconvex and nonlinear, meaning that the optimization procedure might fail to find **global minimum** but gets stuck in some **local minimum**. That actually happened to me several times when trying to control a car using this approach. Here is a screenshot from the simulator showing exactly that:
@@ -123,16 +120,16 @@ Let's recall that this cost function is nonconvex and nonlinear, meaning that th
 
 To avoid such a problem the search space needs to be minimized. Since the car should go forward always and should not make U-turn, such a constraint would be added to our MPC optimization problem. It is implemented by limiting the orientation *psi* to be less than 115 degrees during the whole MPC horizon, defined by a number of samples N. As a result, the final optimization problem would look like:
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\\minimize\;\;J_k\\st.\;\;\;\;\;-1\leq\delta_i\leq{1}\\.\;\;\;\;\;\;\;\;-1\leq{a_i}\leq{1}\\.\;\;\;\;\;\;\;\;-\frac{5\pi}{8}\leq\psi_i\leq\frac{5\pi}{8}">
+<img src="https://latex.codecogs.com/svg.latex?\\minimize \;\; J_k\\ st.\;\;\;\;\; -1\leq \delta_i\leq 1\\.  \;\;\;\;\;\;\;\;-1\leq a_i \leq 1\\.  \;\;\;\;\;\;\;\;-\frac{5\pi}{8}\leq \psi_i\leq\frac{5\pi}{8}">
 </p>
 
 ### Receding horizon
 Receding horizon is the amount of time that MPC looks into the future. In our case that is the product of a number of samples, we look into the future N and sampling time dt. 
-Since one of the requirements is that the MPC is robust against 100-millisecond delay, it didn't make sense to make the sampling rate any faster. Also, making it close to 100 milliseconds made the car oscillate, and eventually veer off track. The delay caused the instability. So the final dt was chosen to be 500 milliseconds. I didn't go much higher since that would create discretization quite inaccurate, and our model would be very different from the real one. The number of samples N was chosen on the basis of amount of reference trajectory provided. The simulator provides next portion trajectory, the N is chosen so that in the receding horizon the car covers most of the provided trajectory. It would not make sense to go above that since we are unaware where the car should go. Unfortunately the length of the reference trajectory provided by the simulator changes so sometimes the MPC trajectory is even longer than the referent one. 
+Since one of the requirements is that the MPC is robust against 100-millisecond delay, it didn't make sense to make the sampling rate any faster. Also, making it close to 100 milliseconds made the car oscillate, and eventually veer off track. The delay caused the instability. So the final dt was chosen to be 500 milliseconds. I didn't go much higher since that would create discretization quite inaccurate, and our model would be very different from the real one. The number of samples N was chosen on the basis of the amount of reference trajectory provided. The simulator provides next portion trajectory, the N is chosen so that in the receding horizon the car covers most of the provided trajectory. It would not make sense to go above that since we are unaware where the car should go. Unfortunately, the length of the reference trajectory provided by the simulator changes so sometimes the MPC trajectory is even longer than the referent one. 
 
 The final result is shown below:
 
-[![MPC Controlled car](./imgs/youtube.jpg)](https://www.youtube.com/watch?v=nLHksA4eX9o "MPC Controlled car")
+[![MPC Controled car](./imgs/youtube.jpg)](https://www.youtube.com/watch?v=nLHksA4eX9o "MPC Controled car")
 
 ## Discussion
 The MPC performed quite well on a given problem. The car was able to drive on the provided track with the speed of 60mph. It was noticed that the car actually cuts some of the sharp corners. The probable reason for that was that high steering angles were penalized. The problem with this model is that it does not take full dynamics into consideration, namely the tire interaction with the ground. It might happen that the ride shown in the video above would be impossible if the full dynamics was considered, and the car would slide off track in some of sharper bends. One improvement to described approach would be to have the speed based on the curvature of the road. For that, we will need longer horizon, so the car can start breaking on time. 
